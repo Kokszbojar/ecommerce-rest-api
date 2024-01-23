@@ -1,5 +1,9 @@
+import django
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver 
+from django.utils import timezone
 
 class Category(models.Model):
     name = models.CharField(max_length=100, blank=True, default='')
@@ -21,22 +25,23 @@ class Product(models.Model):
 class Order(models.Model):
     client = models.ForeignKey(User, related_name='orders', on_delete=models.CASCADE)
     address = models.CharField(max_length=200, blank=True, default='')
-    product_list = models.CharField(max_length=1000, default='error')
-    order_date = models.DateTimeField(blank=True, default='cart_not_confirmed')
-    payment_date = models.DateTimeField(blank=True, default='cart_not_confirmed')
-    summary_price = models.PositiveIntegerField()
+    product_list = models.CharField(max_length=1000, default='')
+    cart_confirmed = models.BooleanField(default=False)
+    order_date = models.DateTimeField(default=timezone.now)
+    payment_date = models.DateTimeField(default=timezone.now)
+    summary_price = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order_date']
 
     def confirm_cart(self):
         "Calculates dates and applies it to the object fields"
-        from django.utils import timezone
         from datetime import timedelta
 
+        self.cart_confirmed = True
         self.order_date = timezone.now()
         self.payment_date = self.order_date + timedelta(days=5)
-        super().save()
+        self.save()
 
     def calculate_price(self):
         '''
@@ -44,13 +49,21 @@ class Order(models.Model):
         Below lines format above format to retrieve right prices and sum them for final order price
         '''
         self.summary_price = 0
-        products_string_list = self.product_list.split(',').strip()
+        products_string_list = self.product_list.split(',')
         products_objects_list = []
+        if products_string_list[0] == '':
+            return
         for product in products_string_list:
-            product_id = Product.objects.get(id=int(product.split(':')[0]))
-            self.summary_price += product.price * int(product.split(':')[1])
+            product_object = Product.objects.get(id=int(product.split(':')[0]))
+            self.summary_price += product_object.price * int(product.split(':')[1])
         self.save()
+
+    @receiver(post_save, sender=User)
+    def create_handler(sender, instance, **kwargs):
+        if Order.objects.filter(client=instance, cart_confirmed=False):
+            pass
+        else:
+            Order.objects.create(client=instance)
 
     def __str__(self):
         return f'{self.id} | {self.client.username} | {self.payment_date} | {self.summary_price}'
-
