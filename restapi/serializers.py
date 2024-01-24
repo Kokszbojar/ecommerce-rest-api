@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from restapi.models import Category, Product, Order
+from restapi.models import *
 from django.contrib.auth.models import User
 from django.conf import settings
 
@@ -71,7 +71,7 @@ class ProductSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    orders = serializers.HyperlinkedRelatedField(many=True, view_name='admin-order-list', read_only=True)
+    orders = serializers.HyperlinkedRelatedField(many=True, view_name='order-details', read_only=True)
 
     class Meta:
         model = User
@@ -111,5 +111,23 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.client.last_name = validated_data.get('client').get('last_name', instance.client.last_name)
         instance.confirm_cart()
         instance.calculate_price()
+        instance.client.save()
+        instance.save()
+        return instance
+
+class SalesSerializer(serializers.ModelSerializer):
+    id = serializers.HyperlinkedIdentityField(view_name='admin-sales-detail', format='html')
+    date_from = serializers.DateTimeField()
+    date_to = serializers.DateTimeField()
+    quantity = serializers.IntegerField(validators=[positive_int])
+
+    class Meta:
+        model = Sales
+        fields = ['id', 'date_from', 'date_to', 'quantity']
+
+    def update(self, instance, validated_data):
+        instance.date_from = validated_data.get('date_from', instance.date_from)
+        instance.date_to = validated_data.get('date_to', instance.date_to)
+        instance.quantity = validated_data.get('quantity', instance.quantity)
         instance.save()
         return instance

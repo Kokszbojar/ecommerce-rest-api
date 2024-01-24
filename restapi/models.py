@@ -1,4 +1,5 @@
 import django
+import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import pre_save, post_save
@@ -60,6 +61,10 @@ class Order(models.Model):
 
     @receiver(post_save, sender=User)
     def create_handler(sender, instance, **kwargs):
+        '''
+        Order object is being created after .save() method of User instance.
+        Before field "cart_confirmed" becomes True Order object acts as a cart.
+        '''
         if Order.objects.filter(client=instance, cart_confirmed=False):
             pass
         else:
@@ -67,3 +72,10 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{self.id} | {self.client.username} | {self.payment_date} | {self.summary_price}'
+
+
+class Sales(models.Model):
+    date_from = models.DateTimeField(default=datetime.datetime(1924, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
+    date_to = models.DateTimeField(default=datetime.datetime(2124, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
+    quantity = models.PositiveIntegerField(default=100)
+

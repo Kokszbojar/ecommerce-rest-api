@@ -16,10 +16,22 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'category__name', 'description', 'price']
     ordering_fields = ['name', 'category__name', 'price']
 
+class OrderViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        serializer_context = {
+            'request': request,
+        }
+        queryset = Order.objects.filter(client=request.user)
+        serializer = OrderSerializer(queryset, many=True, context=serializer_context)
+        return Response(serializer.data)
+
+
 def send_confirmation_email(request, order):
     subject = 'Order - {order.id}'
     message = 'This is a confirmation email. You have successfully placed your order to purchase items from mysite.com'
-    from_email = 'admin@mysite.com'
+    from_email = 'noreply@mysite.com'
     recipient_list = [request.user.email]
     send_mail(subject, message, from_email, recipient_list)
 
@@ -40,10 +52,12 @@ class OrderDetail(generics.RetrieveUpdateAPIView):
     def put(self, request, pk):
         id = request.path.split('/')[2]
         order = Order.objects.get(id=id)
-        if (order.client == request.user and not order.cart_confirmed) or request.user.is_staff:
+        if ((order.client == request.user and not order.cart_confirmed and order.product_list != '')
+          or request.user.is_staff):
             send_confirmation_email(request, order)
         else:
             queryset = []
+            return Response("Action not allowed")
         return self.update(request)
 
 class CartAdd(APIView):
