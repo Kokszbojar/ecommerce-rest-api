@@ -1,12 +1,16 @@
 from rest_framework import serializers
-from restapi.models import *
+from restapi.models import Category, Product, Order, Sales
 from django.contrib.auth.models import User
 from django.conf import settings
 
+
 class CategorySerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.HyperlinkedIdentityField(view_name='admin-category-detail', format='html')
-    name = serializers.CharField(required=True, allow_blank=False, max_length=100)
-    products = serializers.HyperlinkedRelatedField(many=True, view_name='admin-product-detail', read_only=True)
+    id = serializers.HyperlinkedIdentityField(
+        view_name='admin-category-detail', format='html')
+    name = serializers.CharField(
+        required=True, allow_blank=False, max_length=100)
+    products = serializers.HyperlinkedRelatedField(
+        many=True, view_name='admin-product-detail', read_only=True)
 
     class Meta:
         model = Category
@@ -20,23 +24,42 @@ class CategorySerializer(serializers.HyperlinkedModelSerializer):
         instance.save()
         return instance
 
+
 def positive_int(value):
     if value < 0:
         raise serializers.ValidationError('Not a positive integer')
 
+
 class ProductSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.HyperlinkedIdentityField(view_name='product-detail', format='html')
-    name = serializers.CharField(required=True, allow_blank=False, max_length=100)
-    description = serializers.CharField(required=False, allow_blank=True, max_length=500)
-    price = serializers.IntegerField(required=True, validators=[positive_int])
-    category = serializers.ReadOnlyField(source='category.name')
-    image = serializers.ImageField(required=False)
-    image_min = serializers.ImageField(required=False, read_only=True)
-    add = serializers.HyperlinkedIdentityField(view_name='product-add', read_only=True)
+    id = serializers.HyperlinkedIdentityField(
+        view_name='product-detail', format='html')
+    name = serializers.CharField(
+        required=True, allow_blank=False, max_length=100)
+    description = serializers.CharField(
+        required=False, allow_blank=True, max_length=500)
+    price = serializers.IntegerField(
+        required=True, validators=[positive_int])
+    category = serializers.ReadOnlyField(
+        source='category.name')
+    image = serializers.ImageField(
+        required=False)
+    image_min = serializers.ImageField(
+        required=False, read_only=True)
+    add = serializers.HyperlinkedIdentityField(
+        view_name='product-add', read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'price', 'category', 'image', 'image_min', 'add']
+        fields = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'category',
+            'image',
+            'image_min',
+            'add'
+        ]
 
     def resize_image(self, original_image):
         from PIL import Image
@@ -71,7 +94,8 @@ class ProductSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    orders = serializers.HyperlinkedRelatedField(many=True, view_name='order-details', read_only=True)
+    orders = serializers.HyperlinkedRelatedField(
+        many=True, view_name='order-details', read_only=True)
 
     class Meta:
         model = User
@@ -83,43 +107,65 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField()
-    first_name = serializers.CharField(required=True, allow_blank=True, max_length=50)
-    last_name = serializers.CharField(required=True, allow_blank=True, max_length=50)
+    first_name = serializers.CharField(
+        required=True, allow_blank=True, max_length=50)
+    last_name = serializers.CharField(
+        required=True, allow_blank=True, max_length=50)
 
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name']
- 
+
 
 class OrderSerializer(serializers.ModelSerializer):
-    id = serializers.HyperlinkedIdentityField(view_name='order-details', format='html')
+    id = serializers.HyperlinkedIdentityField(
+        view_name='order-details', format='html')
     client = ClientSerializer()
-    address = serializers.CharField(required=True, allow_blank=True, max_length=200)
-    product_list = serializers.CharField(read_only=True)
+    address = serializers.CharField(
+        required=True, allow_blank=True, max_length=200)
+    product_list = serializers.CharField(
+        read_only=True)
     cart_confirmed = serializers.ReadOnlyField()
-    order_date = serializers.DateTimeField(read_only=True)
-    payment_date = serializers.DateTimeField(read_only=True)
-    summary_price = serializers.IntegerField(read_only=True, validators=[positive_int])
+    order_date = serializers.DateTimeField(
+        read_only=True)
+    payment_date = serializers.DateTimeField(
+        read_only=True)
+    summary_price = serializers.IntegerField(
+        read_only=True, validators=[positive_int])
 
     class Meta:
         model = Order
-        fields = ['id', 'client',  'address', 'product_list', 'cart_confirmed', 'order_date', 'payment_date', 'summary_price']
+        fields = [
+            'id',
+            'client',
+            'address',
+            'product_list',
+            'cart_confirmed',
+            'order_date',
+            'payment_date',
+            'summary_price'
+        ]
 
     def update(self, instance, validated_data):
         instance.address = validated_data.get('address', instance.address)
-        instance.client.first_name = validated_data.get('client').get('first_name', instance.client.first_name)
-        instance.client.last_name = validated_data.get('client').get('last_name', instance.client.last_name)
+        instance.client.first_name = validated_data.get('client').get(
+            'first_name', instance.client.first_name)
+        instance.client.last_name = validated_data.get('client').get(
+            'last_name', instance.client.last_name)
         instance.confirm_cart()
         instance.calculate_price()
         instance.client.save()
         instance.save()
         return instance
 
+
 class SalesSerializer(serializers.ModelSerializer):
-    id = serializers.HyperlinkedIdentityField(view_name='admin-sales-detail', format='html')
+    id = serializers.HyperlinkedIdentityField(
+        view_name='admin-sales-detail', format='html')
     date_from = serializers.DateTimeField()
     date_to = serializers.DateTimeField()
-    quantity = serializers.IntegerField(validators=[positive_int])
+    quantity = serializers.IntegerField(
+        validators=[positive_int])
 
     class Meta:
         model = Sales

@@ -1,5 +1,7 @@
-from restapi.models import *
-from restapi.serializers import *
+from restapi.models import Category, Product, Order, Sales
+from restapi.serializers import (UserSerializer, CategorySerializer,
+                                 ProductSerializer, OrderSerializer,
+                                 SalesSerializer)
 from django.contrib.auth.models import User
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -30,7 +32,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
 
-class SalesViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class SalesViewSet(mixins.ListModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.UpdateModelMixin,
+                   viewsets.GenericViewSet):
     queryset = Sales.objects.all()
     serializer_class = SalesSerializer
     permission_classes = [IsAdminUser]
@@ -51,10 +56,10 @@ class SalesViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Upda
                     for product in product_list:
                         try:
                             name = Product.objects.get(id=int(product[0])).name
-                        except:
+                        except Product.DoesNotExist:
                             continue
                         products[name] = int(product[2])
-            sorted_list = sorted(products.items(), key=lambda x:x[1])[::-1]
+            sorted_list = sorted(products.items(), key=lambda x: x[1])[::-1]
             if sales_obj.quantity < len(products):
                 sorted_list = sorted_list[:sales_obj.quantity]
             products = dict(sorted_list)

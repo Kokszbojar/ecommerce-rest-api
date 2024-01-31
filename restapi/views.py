@@ -4,9 +4,10 @@ from restapi.serializers import ProductSerializer, OrderSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import generics, viewsets, filters, status
+from rest_framework import generics, viewsets, filters
 
 from django.core.mail import send_mail
+from django.http import Http404
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
@@ -16,6 +17,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'category__name', 'description', 'price']
     ordering_fields = ['name', 'category__name', 'price']
 
+
 class OrderViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -24,16 +26,20 @@ class OrderViewSet(viewsets.ViewSet):
             'request': request,
         }
         queryset = Order.objects.filter(client=request.user)
-        serializer = OrderSerializer(queryset, many=True, context=serializer_context)
+        serializer = OrderSerializer(queryset, many=True,
+                                     context=serializer_context)
         return Response(serializer.data)
 
 
 def send_confirmation_email(request, order):
     subject = 'Order - {order.id}'
-    message = 'This is a confirmation email. You have successfully placed your order to purchase items from mysite.com'
+    message = str('This is a confirmation email.' +
+                  'You have successfully placed your order' +
+                  'to purchase items from mysite.com')
     from_email = 'noreply@mysite.com'
     recipient_list = [request.user.email]
     send_mail(subject, message, from_email, recipient_list)
+
 
 class OrderDetail(generics.RetrieveUpdateAPIView):
     queryset = Order.objects.all()
@@ -44,26 +50,32 @@ class OrderDetail(generics.RetrieveUpdateAPIView):
         id = request.path.split('/')[2]
         order = Order.objects.get(id=id)
         if order.client == request.user or request.user.is_staff:
-            pass
+            return self.retrieve(request)
         else:
-            queryset = []
-        return self.retrieve(request)
+            return Response("Access Denied")
 
     def put(self, request, pk):
         id = request.path.split('/')[2]
         order = Order.objects.get(id=id)
-        if ((order.client == request.user and not order.cart_confirmed and order.product_list != '')
-          or request.user.is_staff):
+        if (
+            (
+                order.client == request.user
+                and not order.cart_confirmed
+                and order.product_list != ''
+            )
+            or request.user.is_staff
+        ):
             send_confirmation_email(request, order)
         else:
-            queryset = []
             return Response("Action not allowed")
         return self.update(request)
+
 
 class CartAdd(APIView):
     def get_order(self, request):
         try:
-            return Order.objects.get(client=request.user, cart_confirmed=False)
+            return Order.objects.get(client=request.user,
+                                     cart_confirmed=False)
         except Order.DoesNotExist:
             raise Http404
 
@@ -87,7 +99,7 @@ class CartAdd(APIView):
             else:
                 item += ','
             order.product_list += item
-        if order.product_list != '' and new_id == False:
+        if order.product_list != '' and new_id is False:
             order.product_list = order.product_list[:-1]
         else:
             order.product_list += f'{product.id}:1'
@@ -99,7 +111,10 @@ class CartAdd(APIView):
         order.product_list = ''
         for item in product_list:
             item_list = item.split(':')
-            if product.id == int(item_list[0]) and int(item_list[1]) > 1:
+            if (
+                product.id == int(item_list[0])
+                and int(item_list[1]) > 1
+            ):
                 item = f'{product.id}:{int(item_list[1])-1},'
             elif product.id == int(item_list[0]):
                 continue

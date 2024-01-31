@@ -1,10 +1,10 @@
-import django
 import datetime
 from django.db import models
+from django.db.models.signals import post_save
 from django.contrib.auth.models import User
-from django.db.models.signals import pre_save, post_save
-from django.dispatch import receiver 
+from django.dispatch import receiver
 from django.utils import timezone
+
 
 class Category(models.Model):
     name = models.CharField(max_length=100, blank=True, default='')
@@ -12,25 +12,39 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+
 class Product(models.Model):
-    name = models.CharField(max_length=100, blank=True, default='')
-    description = models.CharField(max_length=500, blank=True, default='')
+    name = models.CharField(
+        max_length=100, blank=True, default='')
+    description = models.CharField(
+        max_length=500, blank=True, default='')
     price = models.PositiveIntegerField()
-    category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='static', height_field=None, width_field=None, max_length=1440)
-    image_min = models.ImageField(upload_to='static', height_field=None, width_field=None, max_length=200)
+    category = models.ForeignKey(
+        'Category', related_name='products', on_delete=models.PROTECT)
+    image = models.ImageField(
+        upload_to='static', height_field=None, width_field=None, max_length=1440)
+    image_min = models.ImageField(
+        upload_to='static', height_field=None, width_field=None, max_length=200)
 
     def __str__(self):
         return f'{self.name} | {self.price}'
 
+
 class Order(models.Model):
-    client = models.ForeignKey(User, related_name='orders', on_delete=models.CASCADE)
-    address = models.CharField(max_length=200, blank=True, default='')
-    product_list = models.CharField(max_length=1000, default='')
-    cart_confirmed = models.BooleanField(default=False)
-    order_date = models.DateTimeField(default=timezone.now)
-    payment_date = models.DateTimeField(default=timezone.now)
-    summary_price = models.PositiveIntegerField(default=0)
+    client = models.ForeignKey(
+        User, related_name='orders', on_delete=models.PROTECT)
+    address = models.CharField(
+        max_length=200, blank=True, default='')
+    product_list = models.CharField(
+        max_length=1000, default='')
+    cart_confirmed = models.BooleanField(
+        default=False)
+    order_date = models.DateTimeField(
+        default=timezone.now)
+    payment_date = models.DateTimeField(
+        default=timezone.now)
+    summary_price = models.PositiveIntegerField(
+        default=0)
 
     class Meta:
         ordering = ['order_date']
@@ -51,7 +65,6 @@ class Order(models.Model):
         '''
         self.summary_price = 0
         products_string_list = self.product_list.split(',')
-        products_objects_list = []
         if products_string_list[0] == '':
             return
         for product in products_string_list:
@@ -75,7 +88,9 @@ class Order(models.Model):
 
 
 class Sales(models.Model):
-    date_from = models.DateTimeField(default=datetime.datetime(1924, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
-    date_to = models.DateTimeField(default=datetime.datetime(2124, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
-    quantity = models.PositiveIntegerField(default=100)
-
+    date_from = models.DateTimeField(
+        default=datetime.datetime(1924, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
+    date_to = models.DateTimeField(
+        default=datetime.datetime(2124, 1, 22, 11, 42, 5, 2006, tzinfo=datetime.timezone.utc))
+    quantity = models.PositiveIntegerField(
+        default=100)
