@@ -1,5 +1,6 @@
-from restapi.models import Product, Order
+from restapi.models import Product, Order, Quantity
 from restapi.serializers import ProductSerializer, OrderSerializer
+from restapi.permissions import IsOwnerOrAdminOnly
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -8,6 +9,7 @@ from rest_framework import generics, viewsets, filters
 
 from django.core.mail import send_mail
 from django.http import Http404
+from django.db import IntegrityError, transaction
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
@@ -19,7 +21,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class OrderViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdminOnly]
 
     def list(self, request):
         serializer_context = {
@@ -44,27 +46,15 @@ def send_confirmation_email(request, order):
 class OrderDetail(generics.RetrieveUpdateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdminOnly]
 
     def get(self, request, pk):
-        id = request.path.split('/')[2]
-        order = Order.objects.get(id=id)
-        if order.client == request.user or request.user.is_staff:
-            return self.retrieve(request)
-        else:
-            return Response("Access Denied")
+        return self.retrieve(request)
 
+    @transaction.atomic
     def put(self, request, pk):
-        id = request.path.split('/')[2]
-        order = Order.objects.get(id=id)
-        if (
-            (
-                order.client == request.user
-                and not order.cart_confirmed
-                and order.product_list != ''
-            )
-            or request.user.is_staff
-        ):
+        order = Order.objects.get(pk=pk)
+        if not order.cart_confirmed and order.products.all():
             send_confirmation_email(request, order)
         else:
             return Response("Action not allowed")
@@ -86,45 +76,15 @@ class CartAdd(APIView):
             raise Http404
 
     def add_one_to_cart(self, order, product):
-        product_list = order.product_list.split(',')
-        order.product_list = ''
-        new_id = True
-        for item in product_list:
-            item_list = item.split(':')
-            if item_list[0] == '':
-                continue
-            elif product.id == int(item_list[0]):
-                item = f'{product.id}:{int(item_list[1])+1},'
-                new_id = False
-            else:
-                item += ','
-            order.product_list += item
-        if order.product_list != '' and new_id is False:
-            order.product_list = order.product_list[:-1]
-        else:
-            order.product_list += f'{product.id}:1'
-        order.save()
+        try:
+            quantity, created = Quantity.objects.get_or_create(order=order, product=product)
+            with transaction.atomic():
+                quantity.amount += 1
+                quantity.save()
+                order.calculate_price()
+        except IntegrityError:
+            return "Error occured while trying to edit cart"
         return "Added one to cart"
-
-    def remove_one_from_cart(self, order, product):
-        product_list = order.product_list.split(',')
-        order.product_list = ''
-        for item in product_list:
-            item_list = item.split(':')
-            if (
-                product.id == int(item_list[0])
-                and int(item_list[1]) > 1
-            ):
-                item = f'{product.id}:{int(item_list[1])-1},'
-            elif product.id == int(item_list[0]):
-                continue
-            else:
-                item.join(',')
-            order.product_list.join(item)
-        if order.product_list != '':
-            order.product_list = order.product_list[:-1]
-        order.save()
-        return "Removed one from cart"
 
     def get(self, request, pk):
         order = self.get_order(request)

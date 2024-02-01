@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from restapi.models import Category, Product, Order, Sales
+from restapi.models import Category, Product, Order, Sales, Quantity
 from django.contrib.auth.models import User
 from django.conf import settings
 
@@ -39,8 +39,8 @@ class ProductSerializer(serializers.HyperlinkedModelSerializer):
         required=False, allow_blank=True, max_length=500)
     price = serializers.IntegerField(
         required=True, validators=[positive_int])
-    category = serializers.ReadOnlyField(
-        source='category.name')
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all())
     image = serializers.ImageField(
         required=False)
     image_min = serializers.ImageField(
@@ -73,9 +73,9 @@ class ProductSerializer(serializers.HyperlinkedModelSerializer):
         file_name = original_image.name
         name_split = file_name.split('.')
         img_name = name_split[0] + '_min.' + name_split[1]
-        img_path = settings.MEDIA_ROOT / 'static' / f'{img_name}'
+        img_path = settings.MEDIA_ROOT / 'images' / f'{img_name}'
         img.save(img_path)
-        return f'static/{img_name}'
+        return f'images/{img_name}'
 
     def create(self, validated_data):
         resized_image = self.resize_image(validated_data['image'])
@@ -117,14 +117,26 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = ['username', 'first_name', 'last_name']
 
 
+class QuantitySerializer(serializers.ModelSerializer):
+    product = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Quantity
+        fields = ['product', 'amount']
+
+
 class OrderSerializer(serializers.ModelSerializer):
     id = serializers.HyperlinkedIdentityField(
         view_name='order-details', format='html')
     client = ClientSerializer()
-    address = serializers.CharField(
-        required=True, allow_blank=True, max_length=200)
-    product_list = serializers.CharField(
-        read_only=True)
+    street = serializers.CharField(
+        required=True, allow_blank=True, max_length=100)
+    building = serializers.CharField(
+        required=True, allow_blank=True, max_length=10)
+    flat = serializers.CharField(
+        required=True, allow_blank=True, max_length=10)
+    quantities = QuantitySerializer(
+        many=True, read_only=True)
     cart_confirmed = serializers.ReadOnlyField()
     order_date = serializers.DateTimeField(
         read_only=True)
@@ -138,8 +150,10 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'client',
-            'address',
-            'product_list',
+            'street',
+            'building',
+            'flat',
+            'quantities',
             'cart_confirmed',
             'order_date',
             'payment_date',
@@ -147,13 +161,14 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
     def update(self, instance, validated_data):
-        instance.address = validated_data.get('address', instance.address)
+        instance.street = validated_data.get('street', instance.street)
+        instance.building = validated_data.get('building', instance.building)
+        instance.flat = validated_data.get('flat', instance.flat)
         instance.client.first_name = validated_data.get('client').get(
             'first_name', instance.client.first_name)
         instance.client.last_name = validated_data.get('client').get(
             'last_name', instance.client.last_name)
         instance.confirm_cart()
-        instance.calculate_price()
         instance.client.save()
         instance.save()
         return instance

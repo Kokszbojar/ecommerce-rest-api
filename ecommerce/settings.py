@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-w09_!3hy#*uyt*u5oez9+97v812^84kdnkf_p7eo7z!t%vwuf-'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False  # True
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -90,7 +90,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

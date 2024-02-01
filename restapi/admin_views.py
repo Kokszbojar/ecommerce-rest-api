@@ -3,6 +3,7 @@ from restapi.serializers import (UserSerializer, CategorySerializer,
                                  ProductSerializer, OrderSerializer,
                                  SalesSerializer)
 from django.contrib.auth.models import User
+from django.db.models import Q, Sum
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework import viewsets, mixins
@@ -26,7 +27,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(mixins.ListModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.UpdateModelMixin,
+                   viewsets.GenericViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAdminUser]
@@ -44,26 +48,15 @@ class SalesViewSet(mixins.ListModelMixin,
         if sales_obj.date_from > sales_obj.date_to:
             return Response("Date to field is smaller than Date from field")
         else:
-            orders_queryset = Order.objects.filter(
-                order_date__gte=sales_obj.date_from,
-                order_date__lte=sales_obj.date_to,
-                cart_confirmed=True
-            )
-            products = {}
-            if orders_queryset:
-                for order in orders_queryset:
-                    product_list = order.product_list.split(',')
-                    for product in product_list:
-                        try:
-                            name = Product.objects.get(id=int(product[0])).name
-                        except Product.DoesNotExist:
-                            continue
-                        products[name] = int(product[2])
-            sorted_list = sorted(products.items(), key=lambda x: x[1])[::-1]
-            if sales_obj.quantity < len(products):
-                sorted_list = sorted_list[:sales_obj.quantity]
-            products = dict(sorted_list)
-            return products
+            summary_queryset = Product.objects.annotate(
+                amount=Sum('quantity__amount', filter=Q(
+                    quantity__order__order_date__gte=sales_obj.date_from,
+                    quantity__order__order_date__lte=sales_obj.date_to,
+                    quantity__order__cart_confirmed=True
+                    )
+                )
+            ).order_by('-amount')[:sales_obj.quantity]
+            return [{'name': product.name, 'amount': product.amount} for product in summary_queryset]
 
     def retrieve(self, request, pk):
         sales = self.get_object()
