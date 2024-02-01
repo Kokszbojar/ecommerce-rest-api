@@ -1,10 +1,3 @@
-![image](https://github.com/Kokszbojar/ecommerce-rest-api/assets/85175652/9e0a00ff-6e1d-45bd-b82b-525bf10253e8)
-![image](https://github.com/Kokszbojar/ecommerce-rest-api/assets/85175652/b1588daa-0ddc-49ec-aef8-ec87fc90478c)
-
-Aplikacja spełnia wszystkie wyżej wymienione wymagania
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 Instalacja (Unix/macOS):
 
   python3 -m venv .venv
@@ -17,11 +10,6 @@ Instalacja (Unix/macOS):
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Krótki opis widoków i mapowania:
-
-![image](https://github.com/Kokszbojar/ecommerce-rest-api/assets/85175652/2c065a23-22e7-4115-bebd-093791bbc2ab)
-
-
 Wszystkie linki są zagnieżdżone za pomocą routera i wyświetlania obiektów przy pomocy hiperlinków pozwalających na drogę w kierunku coraz to cieńszych "gałęzi drzewa"
 
 Nie bawiłem się w ukrywanie linków dla zwykłych lub niezalogowanych użytkowników (można to zrobić tworząc np. swoje własne szablony)
@@ -30,12 +18,10 @@ Ale jeśli taki użytkownik spróbuje odczytać takowe dane otrzyma informację 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Główną funkcjonalnością jaką może się wyróżniać ten projekt spośród innych jest podejście do sposobu składania zamówienia, który został podzielony na dwa etapy:
+Główną funkcjonalnością jest składanie zamówienia, która została podzielona na dwa etapy:
 
   1. Dodawanie poszczególnych produktów do "koszyka"
   2. Wprowadzanie danych personalnych oraz potwierdzenie zamówienia
-
-Na przyszłość już została dodana funkcja usuwania przedmiotów z koszyka ale nie jest ona zmapowana na żaden z endpointów
 
 Po złożeniu zamówienia zostaje wysłana informacja na emaila przypisanego do konta (póki co konta są tworzone przez shella bądź django-admin panel)
 
@@ -47,7 +33,7 @@ Dodam tylko że "koszyk" i zamówienie to jeden i tem sam obiekt przez cały pro
 
 Statystyki sprzedaży wymagały sporo pracy ponieważ nie mogłem znaleźć odpowiedniego rozwiązania które finalnie okazało się bardzo proste i skuteczne, a mianowicie
 
-Stworzyłem nowy model nieobowiązkowy z 3 polami - 2 daty oraz ilość (wyświetlanych przedmiotów)
+Stworzyłem nowy model "Sales" z 3 polami - 2 daty oraz ilość (wyświetlanych przedmiotów)
 
 Wystarczy podać początkową, końcową datę wraz z godziną i ilość wyświetlanych produktów
 
@@ -55,11 +41,14 @@ W odpowiedzi otrzymujemy prosty słownik z nazwami przedmiotów oraz ilością s
 
 Ostatnie wyszukanie zapisuje nam się jak po raz kolejny trafimy na ten endpoint
 
+Wykorzystanie powyższego modelu pozwoliło mi zaoszczędzić czas niewielkim kosztem optymalizacji, ponieważ:
+  1. Wszystkie widoki wyświetlania oraz wprowadzania danych do modelu są obsługiwane przez domyślne mixins z rest_framework
+  2. Automatyczne mapowanie poprzez default router
+  3. Zapamiętywanie poprzednich wyszukań w historii
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-![image](https://github.com/Kokszbojar/ecommerce-rest-api/assets/85175652/3add9a56-09b8-4674-8061-9c12d35c1d05)
-
-Wszystkie widoki oraz serializery zostały obudowane w klasy i funkcje wbudowane w django rest framework tak aby oszczędzić na czasie i zachować przejszystość kodu
+Wszystkie widoki oraz serializery zostały obudowane w klasy i funkcje wbudowane w django rest framework tak aby oszczędzić na czasie i zachować przejrzystość kodu
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
